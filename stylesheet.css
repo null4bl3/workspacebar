@@ -2,15 +2,20 @@
 .panelBox {
 }
 
-.activeBtn, .inactiveBtn {
-	color: rgba(256, 256, 256, 1);
-	background-color: rgba(200, 200, 200, 1);
-	border: 1px solid #cccccc;
+.activeBtn, .inactiveBtn, .occupiedBtn {
+	color: #8ae234;
+	background-color: #2e3436;
+	border: 1px solid #2e3436;
 	padding: 0 6px;
 }
 
 
 .inactiveBtn {
-	color: rgba(256, 256, 256, .5);
-	background-color: rgba(200, 200, 200, .5);
+	color: #babdb6;
+	background-color: #2e3436;
+}
+
+.occupiedBtn {
+	color: #d7a571;
+	background-color: #2e3436;
 }
