@@ -1,8 +1,9 @@
 /* WorkspaceBar Extension
  * author: Mark Bokil
  * 9/16/12
+ * forked and extended by null4bl3 on 17/5/2017
  * version 1.0.1
- * credit: gcampax, some code from Workspace Indicator 
+ * credit: gcampax, some code from Workspace Indicator
  */
 
 const GLib = imports.gi.GLib;
@@ -16,23 +17,23 @@ const PopupMenu = imports.ui.popupMenu;
 
 const Gettext = imports.gettext.domain('markbokil.com-extensions');
 const _ = Gettext.gettext;
-const _N = function(x) { return x; }
+const _N = function(x) {
+    return x;
+};
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const Convenience = Me.imports.convenience;
 const Keys = Me.imports.keys;
-
+const labels = ["", "DEV", "WEB", "TERM", "FILES", "RAND", "SOC", "MEDIA", "EXTR", "REMOTE"];
 const DEBUG = false;
 const PREFS_DIALOG = 'gnome-shell-extension-prefs workspace-bar@markbokil.com';
 
-function init(extensionMeta)
-{
+function init(extensionMeta) {
     return new WorkspaceBar(extensionMeta);
 }
 
-function WorkspaceBar(extensionMeta)
-{
+function WorkspaceBar(extensionMeta) {
     this.init(extensionMeta);
 }
 
@@ -44,7 +45,7 @@ function debug(str) {
 }
 
 WorkspaceBar.prototype = {
-    
+
     init: function(extensionMeta) {
         this.extensionMeta = extensionMeta;
         this._settings = Convenience.getSettings();
@@ -52,8 +53,8 @@ WorkspaceBar.prototype = {
 
     enable: function() {
         this._settingsSignals = [];
-        this._settingsSignals.push(this._settings.connect('changed::'+Keys.OVERVIEW_MODE, Lang.bind(this, this._setOverViewMode)));
-        this._settingsSignals.push(this._settings.connect('changed::'+Keys.POSITION, Lang.bind(this, this._setPosition)));
+        this._settingsSignals.push(this._settings.connect('changed::' + Keys.OVERVIEW_MODE, Lang.bind(this, this._setOverViewMode)));
+        this._settingsSignals.push(this._settings.connect('changed::' + Keys.POSITION, Lang.bind(this, this._setPosition)));
         this.overViewMode = this._settings.get_boolean(Keys.OVERVIEW_MODE);
         this.boxPosition = this._settings.get_string(Keys.POSITION);
         this.boxMain = new St.BoxLayout();
@@ -65,13 +66,13 @@ WorkspaceBar.prototype = {
 
         // add box to panel
         let box = Main.panel["_" + this.boxPosition + "Box"];
-        box.insert_child_at_index(this.buttonBox,0);
+        box.insert_child_at_index(this.buttonBox, 0);
 
         this._screenSignals = [];
-        this._screenSignals.push(global.screen.connect_after('workspace-removed', Lang.bind(this,this._buildWorkSpaceBtns)));
-        this._screenSignals.push(global.screen.connect_after('workspace-added', Lang.bind(this,this._buildWorkSpaceBtns)));
-        this._screenSignals.push(global.screen.connect_after('workspace-switched', Lang.bind(this,this._buildWorkSpaceBtns)));
-        
+        this._screenSignals.push(global.screen.connect_after('workspace-removed', Lang.bind(this, this._buildWorkSpaceBtns)));
+        this._screenSignals.push(global.screen.connect_after('workspace-added', Lang.bind(this, this._buildWorkSpaceBtns)));
+        this._screenSignals.push(global.screen.connect_after('workspace-switched', Lang.bind(this, this._buildWorkSpaceBtns)));
+
         this._buildWorkSpaceBtns();
     },
 
@@ -80,15 +81,15 @@ WorkspaceBar.prototype = {
         box.remove_actor(this.buttonBox);
         this.buttonBox = null;
 
-        // disconnect screen signals 
-        for (x=0; x < this._screenSignals.length; x++) {
+        // disconnect screen signals
+        for (x = 0; x < this._screenSignals.length; x++) {
             global.screen.disconnect(this._screenSignals[x]);
         }
         this._screenSignals = [];
         this._screenSignals = null;
 
-        // disconnect settings bindings 
-        for (x=0; x < this._settingsSignals.length; x++) {
+        // disconnect settings bindings
+        for (x = 0; x < this._settingsSignals.length; x++) {
             global.screen.disconnect(this._settingsSignals[x]);
         }
         this._settingsSignals = [];
@@ -98,11 +99,11 @@ WorkspaceBar.prototype = {
     _doPrefsDialog: function() {
         debug('right-click in onbtnpress: ');
         Main.Util.trySpawnCommandLine(PREFS_DIALOG);
-            
+
     },
 
     _setOverViewMode: function() {
-        if( this._settings.get_boolean(Keys.OVERVIEW_MODE) ) {
+        if (this._settings.get_boolean(Keys.OVERVIEW_MODE)) {
             this.overViewMode = true;
         } else {
             this.overViewMode = false;
@@ -113,8 +114,8 @@ WorkspaceBar.prototype = {
         if (this.overViewMode) {
             if (!Main.overview.visible) {
                 Main.overview.show();
-            }    
-        }   
+            }
+        }
     },
 
     _setPosition: function() {
@@ -127,7 +128,7 @@ WorkspaceBar.prototype = {
 
         // add box
         box = Main.panel["_" + this.boxPosition + "Box"];
-        box.insert_child_at_index(this.buttonBox,0);
+        box.insert_child_at_index(this.buttonBox, 0);
     },
 
     _getCurrentWorkSpace: function() {
@@ -139,33 +140,55 @@ WorkspaceBar.prototype = {
         this.currentWorkSpace = this._getCurrentWorkSpace();
         this.buttons = []; //truncate arrays to release memory
         this.labels = [];
+
+        let emptyWorkspaces = [];
+
+
+
         let workSpaces = global.screen.n_workspaces - 1;
         let str = '';
+        // GETS ALL EXISTING WINDOWS
+        let windows = global.get_window_actors();
+        for (i = 0; i < windows.length; i++) {
+            let winActor = windows[i];
+            let win = winActor.meta_window;
+            if (win.is_on_all_workspaces())
+                continue;
+            let workspaceIndex = win.get_workspace().index();
+            emptyWorkspaces[workspaceIndex] = workspaceIndex;
+        }
 
-        for (x=0; x <= workSpaces; x++) {
-            str =  (x+1).toString();
-            if ( x == this.currentWorkSpace) {
-                this.labels[x] = new St.Label({ text: _(str), style_class: "activeBtn" });
-            } else {
-                this.labels[x] = new St.Label({ text: _(str), style_class: "inactiveBtn" });
+        for (x = 0; x <= workSpaces; x++) {
+            str = labels[x + 1].toString();
+            if (x == this.currentWorkSpace) {
+                this.labels[x] = new St.Label({
+                    text: _(str),
+                    style_class: "activeBtn"
+                });
+            } else if (x != this.currentWorkSpace && !emptyWorkspaces[x]) {
+                this.labels[x] = new St.Label({
+                    text: _(str),
+                    style_class: "inactiveBtn"
+                });
+            } else if (!emptyWorkspaces[x] || x !== this.currentWorkSpace) {
+                this.labels[x] = new St.Label({
+                    text: _(str),
+                    style_class: "occupiedBtn"
+                });
             }
-            
-            this.buttons[x] = new St.Button(); //{style_class: "panel-button"}
+            this.buttons[x] = new St.Button();
             this.buttons[x].set_child(this.labels[x]);
-
             this.buttons[x].connect('button-press-event', Lang.bind(this, function(actor, event) {
                 let button = event.get_button();
-                if (button == 3) { //right click
+                if (button == 3) {
                     this._doPrefsDialog();
                 } else {
-                    this._setWorkSpace(actor.get_child().text); //use text label for workspace index
+                    this._setWorkSpace(labels.indexOf(actor.get_child().text));
                 }
-                }));
-
+            }));
             this.buttons[x].connect('scroll-event', Lang.bind(this, this._onScrollEvent));
             this.boxMain.add_actor(this.buttons[x]);
         }
-        
     },
 
     _removeAllChildren: function(box) {
@@ -174,11 +197,11 @@ WorkspaceBar.prototype = {
         if (children) {
             let len = children.length;
 
-            for(x=len-1; x >= 0  ; x--) {
+            for (x = len - 1; x >= 0; x--) {
                 box.remove_actor(children[x]);
             }
         }
-        
+
     },
 
     _setWorkSpace: function(index) {
@@ -187,7 +210,7 @@ WorkspaceBar.prototype = {
         try {
             let possibleWorkspace = global.screen.get_workspace_by_index(index);
             possibleWorkspace.activate(global.get_current_time());
-        } catch(e) {
+        } catch (e) {
             global.logError(e);
             return;
         }
@@ -195,7 +218,7 @@ WorkspaceBar.prototype = {
         this._buildWorkSpaceBtns(); //refresh GUI after add,remove,switch workspace
     },
 
-    _activateScroll : function (offSet) {
+    _activateScroll: function(offSet) {
         this.currentWorkSpace = this._getCurrentWorkSpace() + offSet;
         let workSpaces = global.screen.n_workspaces - 1;
 
@@ -205,7 +228,7 @@ WorkspaceBar.prototype = {
         this._setWorkSpace(this.currentWorkSpace + 1);
     },
 
-    _onScrollEvent : function(actor, event) {
+    _onScrollEvent: function(actor, event) {
         let direction = event.get_scroll_direction();
         let offSet = 0;
 
@@ -216,8 +239,7 @@ WorkspaceBar.prototype = {
         } else {
             return;
         }
-       
+
         this._activateScroll(offSet);
     }
-}
-
+};
